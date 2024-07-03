@@ -46,4 +46,21 @@ public class AlfredLibraryModule extends ReactContextBaseJavaModule {
             }
         });
     }
+
+    @ReactMethod
+    public void sdkSignIn(String allyName, String allyCode, Promise promise) {
+        AlfredLibrary.register(allyName, allyCode, new AlfredLibrary.ICallback() {
+            @Override
+            public void onSuccess() {
+                Log.d("AlfredLibraryModule", "Successfully signed in: " + allyName);
+                promise.resolve("AlfredLibrary successfully signed in: " + allyName);
+            }
+
+            @Override
+            public void onFailed(AlfredError alfredError, String s) {
+                Log.d("AlfredLibraryModule", "Could not sign in: " + alfredError.toDescription());
+                promise.reject(new Throwable("AlfredLibrary failed to sign in: " + alfredError.toDescription()));
+            }
+        });
+    }
 }
