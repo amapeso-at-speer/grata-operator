@@ -6,58 +6,80 @@
  * @flow strict-local
  */
 
-import React from 'react';
-import type {Node} from 'react';
+import React, {useEffect} from 'react';
+import {NativeModules} from 'react-native';
 import {
   SafeAreaView,
   ScrollView,
   StatusBar,
-  StyleSheet,
-  Text,
   useColorScheme,
   View,
+  StyleSheet,
 } from 'react-native';
 
+import {Colors} from 'react-native/Libraries/NewAppScreen';
+import DeviceSearchButton from './src/components/DeviceSearchButton';
 import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-import NewModuleButton from './src/components/NewModuleButton';
+  checkMultiple,
+  Permission,
+  PERMISSIONS,
+  requestMultiple,
+  RESULTS,
+} from 'react-native-permissions';
 
-const Section = ({children, title}): Node => {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-};
-
-const App: () => Node = () => {
+const App = () => {
   const isDarkMode = useColorScheme() === 'dark';
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+    flex: 1,
+  };
+
+  const {AlfredLibraryModule} = NativeModules;
+
+  useEffect(() => {
+    AlfredLibraryModule.init(
+      process.env.ALFRED_MODULE_ACCESS_KEY,
+      process.env.ALFRED_MODULE_SECRET_KEY,
+    )
+      .then(data => {
+        console.log(data);
+        signIn('grata', process.env.ALFRED_MODULE_ALLY_CODE ?? '');
+      })
+      .catch(err => console.log(err));
+  });
+
+  const signIn = (allyName: string, allyCode: string) => {
+    AlfredLibraryModule.sdkSignIn(allyName, allyCode)
+      .then(data => {
+        console.log(data);
+        handlePermissions();
+      })
+      .catch(err => console.log(err));
+  };
+
+  const handlePermissions = () => {
+    checkMultiple([
+      PERMISSIONS.ANDROID.BLUETOOTH_SCAN,
+      PERMISSIONS.ANDROID.BLUETOOTH_CONNECT,
+      PERMISSIONS.ANDROID.ACCESS_COARSE_LOCATION,
+      PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION,
+    ]).then(statuses => {
+      console.log(statuses);
+
+      const requestableStatuses = Object.keys(statuses).filter(status => {
+        return !(
+          statuses[status] === RESULTS.UNAVAILABLE ||
+          statuses[status] === RESULTS.GRANTED
+        );
+      });
+
+      if (requestableStatuses.length > 0) {
+        requestMultiple(requestableStatuses as Permission[]).then(results =>
+          console.log(results),
+        );
+      }
+    });
   };
 
   return (
@@ -65,27 +87,10 @@ const App: () => Node = () => {
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.container}
         style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <NewModuleButton />
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.js</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+        <View style={{...backgroundStyle, ...styles.innerContainer}}>
+          <DeviceSearchButton />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -93,6 +98,14 @@ const App: () => Node = () => {
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  innerContainer: {
+    borderWidth: 1,
+    height: '70%',
+  },
   sectionContainer: {
     marginTop: 32,
     paddingHorizontal: 24,

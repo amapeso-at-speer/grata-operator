@@ -3,15 +3,23 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.alfred.library.AlfredDeviceBinder;
+import com.alfred.library.ILockScanner;
+import com.alfred.library.model.AlfredBleDevice;
 import com.alfred.library.model.AlfredError;
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 
 import com.alfred.library.AlfredLibrary;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
 
-public class AlfredLibraryModule extends ReactContextBaseJavaModule {
+import java.util.List;
+
+public class AlfredLibraryModule extends ReactContextBaseJavaModule implements ILockScanner.IListener {
     private final ReactApplicationContext context;
 
     AlfredLibraryModule(ReactApplicationContext context) {
@@ -62,5 +70,28 @@ public class AlfredLibraryModule extends ReactContextBaseJavaModule {
                 promise.reject(new Throwable("AlfredLibrary failed to sign in: " + alfredError.toDescription()));
             }
         });
+    }
+
+    @ReactMethod
+    public void searchForLocks() {
+        ILockScanner scanner = AlfredDeviceBinder.buildScanner(context, this);
+        scanner.scan();
+    }
+
+    @Override
+    public void onScanSuccess(List<AlfredBleDevice> list) {
+        if (!list.isEmpty()) {
+            Log.d("AlfredLibraryModule", "Devices found: " + list.toString());
+        } else {
+            Log.d("AlfredLibraryModule", "No devices found " + list.toString());
+        }
+
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDevicesSearch", list.toString());
+    }
+
+    @Override
+    public void onScanError(AlfredError alfredError) {
+        Log.d("AlfredLibraryModule", "Error while searching for devices: " + alfredError.toDescription());
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDevicesSearchError", alfredError.toDescription());
     }
 }
