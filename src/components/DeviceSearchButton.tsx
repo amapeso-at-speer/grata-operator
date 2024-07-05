@@ -1,9 +1,11 @@
-import React, {useEffect} from 'react';
-import {NativeModules, Button, Alert, NativeEventEmitter} from 'react-native';
+import React, {useContext, useEffect} from 'react';
+import {NativeModules, NativeEventEmitter, Button, Alert} from 'react-native';
 import BluetoothStateManager from 'react-native-bluetooth-state-manager';
+import {DeviceContext} from '../context/DeviceContext';
 
 const DeviceSearchButton = () => {
   const {AlfredLibraryModule} = NativeModules;
+  const {isSearching, setIsSearching, setDevices} = useContext(DeviceContext);
 
   useEffect(() => {
     const eventEmitter = new NativeEventEmitter(
@@ -11,22 +13,35 @@ const DeviceSearchButton = () => {
     );
     const onDevicesSearchListener = eventEmitter.addListener(
       'onDevicesSearch',
-      list => console.log('onDeviceSearch', list),
+      list => onSearchSuccess(list),
     );
     const onDevicesSearchErrListener = eventEmitter.addListener(
       'onDevicesSearchError',
-      error => console.log('onDeviceSearchError', error),
+      error => onSearchError(error),
     );
     return () => {
       onDevicesSearchListener.remove();
       onDevicesSearchErrListener.remove();
     };
-  }, [AlfredLibraryModule]);
+  });
 
-  const onPress = () => {
+  const onSearchSuccess = (list: string) => {
+    console.log('onDevicesSearchListener', list);
+    setDevices(JSON.parse(list));
+    setIsSearching(false);
+  };
+
+  const onSearchError = (error: string) => {
+    console.log('onDevicesSearchError', error);
+    setDevices([]);
+    setIsSearching(false);
+  };
+
+  const startSearch = () => {
     BluetoothStateManager.getState().then(bluetoothState => {
       if (bluetoothState === 'PoweredOn') {
         AlfredLibraryModule.searchForLocks();
+        setIsSearching(true);
       } else {
         Alert.alert(
           'Bluetooth required',
@@ -40,7 +55,8 @@ const DeviceSearchButton = () => {
     <Button
       title="Click to Search for Locks"
       color="#841584"
-      onPress={onPress}
+      disabled={isSearching}
+      onPress={startSearch}
     />
   );
 };

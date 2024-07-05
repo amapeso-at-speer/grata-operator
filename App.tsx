@@ -26,6 +26,8 @@ import {
   requestMultiple,
   RESULTS,
 } from 'react-native-permissions';
+import DeviceList from './src/components/DeviceList';
+import DeviceContextProvider from './src/context/DeviceContext';
 
 const App = () => {
   const isDarkMode = useColorScheme() === 'dark';
@@ -85,14 +87,17 @@ const App = () => {
   return (
     <SafeAreaView style={backgroundStyle}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.container}
-        style={backgroundStyle}>
-        <View style={{...backgroundStyle, ...styles.innerContainer}}>
-          <DeviceSearchButton />
-        </View>
-      </ScrollView>
+      <DeviceContextProvider>
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={styles.container}
+          style={backgroundStyle}>
+          <View style={{...backgroundStyle, ...styles.innerContainer}}>
+            <DeviceSearchButton />
+            <DeviceList />
+          </View>
+        </ScrollView>
+      </DeviceContextProvider>
     </SafeAreaView>
   );
 };
@@ -105,22 +110,6 @@ const styles = StyleSheet.create({
   innerContainer: {
     borderWidth: 1,
     height: '70%',
-  },
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
   },
 });
 
