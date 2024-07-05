@@ -4,9 +4,12 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import com.alfred.library.AlfredDeviceBinder;
+import com.alfred.library.ILockBinder;
 import com.alfred.library.ILockScanner;
+import com.alfred.library.model.AlfredBinderDevice;
 import com.alfred.library.model.AlfredBleDevice;
 import com.alfred.library.model.AlfredError;
+import com.alfred.library.model.AlfredLockAccessData;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -24,9 +27,11 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 
-public class AlfredLibraryModule extends ReactContextBaseJavaModule implements ILockScanner.IListener {
+public class AlfredLibraryModule extends ReactContextBaseJavaModule implements ILockScanner.IListener, ILockBinder.IListener {
     private final ReactApplicationContext context;
+    private List<AlfredBleDevice> devices;
 
     AlfredLibraryModule(ReactApplicationContext context) {
         super(context);
@@ -78,6 +83,7 @@ public class AlfredLibraryModule extends ReactContextBaseJavaModule implements I
         });
     }
 
+    /** Scanning for Lock Methods **/
     @ReactMethod
     public void searchForLocks() {
         ILockScanner scanner = AlfredDeviceBinder.buildScanner(context, this);
@@ -86,6 +92,7 @@ public class AlfredLibraryModule extends ReactContextBaseJavaModule implements I
 
     @Override
     public void onScanSuccess(List<AlfredBleDevice> list) {
+        devices = list;
         JSONArray devices = new JSONArray();
 
         if (!list.isEmpty()) {
@@ -100,7 +107,7 @@ public class AlfredLibraryModule extends ReactContextBaseJavaModule implements I
                     device.put("isPairable", alfredDevice.isPairable());
                     devices.put(device);
                 } catch (JSONException e) {
-                    Log.d("AlfredLibraryModule", "Error while converting device to JSON: " + e.getMessage());
+                    Log.d("AlfredLibraryModule", "Error while converting device data to JSON: " + e.getMessage());
                 }
             }
         } else {
@@ -108,15 +115,15 @@ public class AlfredLibraryModule extends ReactContextBaseJavaModule implements I
         }
 
         // Test data
-        JSONObject test = new JSONObject();
-        try {
-            test.put("name", "Alfred Lock 1");
-            test.put("masterID", "1234567");
-            test.put("isPairable", true);
-            devices.put(test);
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
-        }
+//        JSONObject test = new JSONObject();
+//        try {
+//            test.put("name", "Alfred Lock 1");
+//            test.put("masterId", "1234567");
+//            test.put("isPairable", true);
+//            devices.put(test);
+//        } catch (JSONException e) {
+//            throw new RuntimeException(e);
+//        }
 
         context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDevicesSearch", devices.toString());
     }
@@ -125,5 +132,39 @@ public class AlfredLibraryModule extends ReactContextBaseJavaModule implements I
     public void onScanError(AlfredError alfredError) {
         Log.d("AlfredLibraryModule", "Error while searching for devices: " + alfredError.toDescription());
         context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDevicesSearchError", alfredError.toDescription());
+    }
+
+    /** Registering Lock Methods **/
+    @ReactMethod
+    public void bindToLock(String masterId) {
+        Log.d("AlfredLibraryModule", "Attempting to bind to lock: " + masterId);
+        AlfredBleDevice selectedDevice = null;
+
+        for (int i = 0; i < devices.size(); i++) {
+            AlfredBleDevice current = devices.get(i);
+            if (Objects.equals(current.getMasterID(), masterId)) {
+                selectedDevice = current;
+            }
+        }
+
+        if (selectedDevice != null) {
+            ILockBinder binder = AlfredDeviceBinder.buildLock(context, selectedDevice, this);
+            binder.register(masterId);
+        } else {
+            Log.d("AlfredLibraryModule", "Could not find lock: " + masterId);
+            context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDevicePairNotFound", "Could not find device: " + masterId);
+        }
+    }
+
+    @Override
+    public void onRegisterSuccess(AlfredBinderDevice alfredBinderDevice, AlfredLockAccessData alfredLockAccessData) {
+        // register success
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDevicePair", "Pair succeeded");
+    }
+
+    @Override
+    public void onRegisterError(String s, AlfredError alfredError) {
+        // register error
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDevicePairError", "Pair failed: " + alfredError.toDescription());
     }
 }

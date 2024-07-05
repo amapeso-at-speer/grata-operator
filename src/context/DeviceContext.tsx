@@ -1,16 +1,17 @@
 import React, {useState} from 'react';
+import {LockDevice} from '../types/LockDevice';
 
 interface DeviceContextType {
   isSearching: boolean;
   setIsSearching: (isSearching: boolean) => void;
-  devices: any[];
+  devices: LockDevice[];
   setDevices: (deviceList: any[]) => void;
 }
 
 const defaultDeviceContext = {
   isSearching: false,
   setIsSearching: () => {},
-  devices: [] as any[],
+  devices: [],
   setDevices: () => {},
 };
 

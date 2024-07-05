@@ -1,21 +1,26 @@
 import React, {useContext} from 'react';
-import {View, TouchableOpacity, Text, StyleSheet} from 'react-native';
+import {View, Text, StyleSheet} from 'react-native';
 import {DeviceContext} from '../context/DeviceContext';
+import DevicePairButton from './DevicePairButton';
 
 const DeviceList = () => {
-  const {devices} = useContext(DeviceContext);
+  const {devices, isSearching} = useContext(DeviceContext);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>
-        {devices.length > 0 ? 'Select a device to pair' : 'No devices found'}
-      </Text>
-      {devices.map(device => (
-        <TouchableOpacity>
-          <Text>{device.name}</Text>
-        </TouchableOpacity>
-      ))}
-    </View>
+    <>
+      {!isSearching && (
+        <View style={styles.container}>
+          <Text style={styles.title}>
+            {devices.length > 0
+              ? 'Select a device to pair'
+              : 'No devices found'}
+          </Text>
+          {devices.map(device => (
+            <DevicePairButton device={device} />
+          ))}
+        </View>
+      )}
+    </>
   );
 };
 

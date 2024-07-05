@@ -2,6 +2,7 @@ import React, {useContext, useEffect} from 'react';
 import {NativeModules, NativeEventEmitter, Button, Alert} from 'react-native';
 import BluetoothStateManager from 'react-native-bluetooth-state-manager';
 import {DeviceContext} from '../context/DeviceContext';
+import {LockDevice} from '../types/LockDevice';
 
 const DeviceSearchButton = () => {
   const {AlfredLibraryModule} = NativeModules;
@@ -27,7 +28,7 @@ const DeviceSearchButton = () => {
 
   const onSearchSuccess = (list: string) => {
     console.log('onDevicesSearchListener', list);
-    setDevices(JSON.parse(list));
+    setDevices(JSON.parse(list) as LockDevice[]);
     setIsSearching(false);
   };
 
@@ -41,6 +42,7 @@ const DeviceSearchButton = () => {
     BluetoothStateManager.getState().then(bluetoothState => {
       if (bluetoothState === 'PoweredOn') {
         AlfredLibraryModule.searchForLocks();
+        setDevices([]);
         setIsSearching(true);
       } else {
         Alert.alert(
