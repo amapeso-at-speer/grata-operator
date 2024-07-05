@@ -27,7 +27,7 @@ const DevicePairButton = ({device}: Props) => {
       error => onPairError(error),
     );
     const onDeviceNotFoundListener = eventEmitter.addListener(
-      'onDevicePairNotFound',
+      'onDeviceNotFound',
       () => onDeviceNotFound(),
     );
     return () => {
@@ -39,7 +39,8 @@ const DevicePairButton = ({device}: Props) => {
 
   const onPairSuccess = () => {
     console.log(`Device with masterId(${device.masterId}) successfully paired`);
-    Alert.alert('Pair succeeded', `${device.name} successfully paired`);
+    AlfredLibraryModule.connectLock(device.deviceId);
+    // Alert.alert('Pair succeeded', `${device.name} successfully paired`);
   };
 
   const onPairError = (error: string) => {

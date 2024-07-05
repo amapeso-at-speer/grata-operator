@@ -4,12 +4,17 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import com.alfred.library.AlfredDeviceBinder;
+import com.alfred.library.AlfredDeviceManager;
 import com.alfred.library.ILockBinder;
+import com.alfred.library.ILockConnecter;
+import com.alfred.library.ILockManager;
 import com.alfred.library.ILockScanner;
 import com.alfred.library.model.AlfredBinderDevice;
 import com.alfred.library.model.AlfredBleDevice;
 import com.alfred.library.model.AlfredError;
+import com.alfred.library.model.AlfredLock;
 import com.alfred.library.model.AlfredLockAccessData;
+import com.alfred.library.model.AlfredLockRecord;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -29,7 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
-public class AlfredLibraryModule extends ReactContextBaseJavaModule implements ILockScanner.IListener, ILockBinder.IListener {
+public class AlfredLibraryModule extends ReactContextBaseJavaModule implements ILockScanner.IListener, ILockBinder.IListener, ILockConnecter.IConnectCallback, ILockConnecter.INotifyCallback {
     private final ReactApplicationContext context;
     private List<AlfredBleDevice> devices;
 
@@ -103,7 +108,8 @@ public class AlfredLibraryModule extends ReactContextBaseJavaModule implements I
                 try {
                     AlfredBleDevice alfredDevice = list.get(i);
                     device.put("name", alfredDevice.getName());
-                    device.put("masterID", alfredDevice.getMasterID());
+                    device.put("masterId", alfredDevice.getMasterID());
+                    device.put("deviceId", alfredDevice.getDeviceID());
                     device.put("isPairable", alfredDevice.isPairable());
                     devices.put(device);
                 } catch (JSONException e) {
@@ -115,15 +121,16 @@ public class AlfredLibraryModule extends ReactContextBaseJavaModule implements I
         }
 
         // Test data
-//        JSONObject test = new JSONObject();
-//        try {
-//            test.put("name", "Alfred Lock 1");
-//            test.put("masterId", "1234567");
-//            test.put("isPairable", true);
-//            devices.put(test);
-//        } catch (JSONException e) {
-//            throw new RuntimeException(e);
-//        }
+        JSONObject test = new JSONObject();
+        try {
+            test.put("name", "Alfred Lock 1");
+            test.put("masterId", "1234567");
+            test.put("deviceId", "8912345");
+            test.put("isPairable", true);
+            devices.put(test);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
 
         context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDevicesSearch", devices.toString());
     }
@@ -152,7 +159,7 @@ public class AlfredLibraryModule extends ReactContextBaseJavaModule implements I
             binder.register(masterId);
         } else {
             Log.d("AlfredLibraryModule", "Could not find lock: " + masterId);
-            context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDevicePairNotFound", "Could not find device: " + masterId);
+            context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDeviceNotFound", "Could not find device: " + masterId);
         }
     }
 
@@ -166,5 +173,58 @@ public class AlfredLibraryModule extends ReactContextBaseJavaModule implements I
     public void onRegisterError(String s, AlfredError alfredError) {
         // register error
         context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDevicePairError", "Pair failed: " + alfredError.toDescription());
+    }
+
+    /** Access to Lock methods **/
+    @ReactMethod
+    public void connectLock(String deviceId) {
+        Log.d("AlfredModule", "Attempting to connect to lock: " + deviceId);
+
+        AlfredBleDevice selectedDevice = null;
+
+        for (int i = 0; i < devices.size(); i++) {
+            AlfredBleDevice current = devices.get(i);
+            if (Objects.equals(current.getDeviceID(), deviceId)) {
+                selectedDevice = current;
+            }
+        }
+
+        if (selectedDevice != null) {
+            ILockManager manager = AlfredDeviceManager.buildLock(deviceId, this, this);
+            manager.access();
+        } else {
+            Log.d("AlfredLibraryModule", "Could not find lock: " + deviceId);
+            context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDeviceNotFound", "Could not find device: " + deviceId);
+        }
+    }
+
+    @Override
+    public void onConnected(AlfredLock alfredLock) {
+        Log.d("AlfredLibraryModule", "Connected to device: " + alfredLock.getDeviceID());
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDeviceConnect", "Successfully connected to device");
+    }
+
+    @Override
+    public void onConnectedUpdateMode(AlfredLock alfredLock) {
+        Log.d("AlfredLibraryModule", "Connected (update mode) to device: " + alfredLock.getDeviceID());
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDeviceConnect", "Successfully connected to device");
+    }
+
+    @Override
+    public void onConnectFailed(AlfredLock alfredLock, AlfredError alfredError) {
+        Log.d("AlfredLibraryModule", "Failed to connect to device: (" + alfredLock.getDeviceID() + ") with error: " + alfredError.toDescription());
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDeviceConnectError", "Failed to connect to device: " + alfredError.toDescription());
+    }
+
+    @Override
+    public void onDisconnected(AlfredLock alfredLock) {
+        Log.d("AlfredLibraryModule", "Disconnected from device: " + alfredLock.getDeviceID());
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDeviceDisconnect", "Disconnected from device: " + alfredLock.getDeviceID());
+    }
+
+    @Override
+    public void onRecived(AlfredLock alfredLock, AlfredLockRecord alfredLockRecord) {
+        Log.d("AlfredLibraryModule", "On Connect Received: " + alfredLock.getDeviceID());
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDeviceConnectReceived", "Received connection: " + alfredLock.getDeviceID());
     }
 }
