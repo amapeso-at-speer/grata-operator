@@ -166,13 +166,13 @@ public class AlfredLibraryModule extends ReactContextBaseJavaModule implements I
     @Override
     public void onRegisterSuccess(AlfredBinderDevice alfredBinderDevice, AlfredLockAccessData alfredLockAccessData) {
         // register success
-        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDevicePair", "Pair succeeded");
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDeviceBind", "Pair succeeded");
     }
 
     @Override
     public void onRegisterError(String s, AlfredError alfredError) {
         // register error
-        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDevicePairError", "Pair failed: " + alfredError.toDescription());
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("onDeviceBindError", "Pair failed: " + alfredError.toDescription());
     }
 
     /** Access to Lock methods **/

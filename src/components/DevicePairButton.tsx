@@ -13,13 +13,19 @@ interface Props {
   device: LockDevice;
 }
 
+/**
+ * For a successful pairing to a lock, two steps are required:
+ *   - Bind to the lock (AlfredLibraryModule.bindToLock)
+ *   - Connect to the lock (AlfredLibraryModule.connectLock)
+ */
+
 const DevicePairButton = ({device}: Props) => {
   const {AlfredLibraryModule} = NativeModules;
   const {setConnectedDevice} = useContext(DeviceContext);
 
   const EVENT_LISTENER_MAP = {
-    onDevicePair: () => onPairSuccess(),
-    onDevicePairErr: error => onPairError(error),
+    onDeviceBind: () => onBindSuccess(),
+    onDeviceBindErr: error => onBindError(error),
     onDeviceConnect: () => onConnectSuccess(),
     onConnectError: error => onConnectError(error),
     onDeviceNotFound: () => onDeviceNotFound(),
@@ -39,18 +45,18 @@ const DevicePairButton = ({device}: Props) => {
     };
   });
 
-  const onPairSuccess = () => {
-    console.log(`Device with masterId(${device.masterId}) successfully paired`);
+  const onBindSuccess = () => {
+    console.log(`Device with masterId(${device.masterId}) successfully binded`);
     AlfredLibraryModule.connectLock(device.deviceId);
-    // Alert.alert('Pair succeeded', `${device.name} successfully paired`);
+    // Alert.alert('Bind succeeded', `${device.name} successfully binded`);
   };
 
-  const onPairError = (error: string) => {
+  const onBindError = (error: string) => {
     console.log(
-      `Device with masterId(${device.masterId}) failed to pair: `,
+      `Device with masterId(${device.masterId}) failed to bind: `,
       error,
     );
-    Alert.alert('Pair failed', `${device.name} failed to pair: ${error}`);
+    Alert.alert('Bind failed', `${device.name} failed to bind: ${error}`);
   };
 
   const onConnectSuccess = () => {
